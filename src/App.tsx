@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Graph from './Graph'
 import DetailPanel from './DetailPanel'
 import AddStyle from './AddStyle'
 import { progress, useDanceMap } from './store'
 import { focusColor, usePalette } from './theme'
+import { ChipSet, Divider, Fab, FilterChip, Icon, IconButton, Menu, MenuItem } from './md'
 
 export default function App() {
   const store = useDanceMap()
@@ -12,7 +13,7 @@ export default function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [focusFilter, setFocusFilter] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
-  const [menu, setMenu] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const selected = map.nodes.find((n) => n.id === selectedId) ?? null
@@ -22,11 +23,11 @@ export default function App() {
     const n = map.nodes.find((x) => x.id === id)
     if (!n || n.kind === 'focus') return colorOf(id)
     const t = map.links.filter((l) => l.from === id)
-    return t.length === 1 ? colorOf(t[0].to) : pal.ink
+    return t.length === 1 ? colorOf(t[0].to) : pal.outline
   }
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && (setSelectedId(null), setMenu(false), setAdding(false))
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setSelectedId(null)
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
@@ -41,57 +42,52 @@ export default function App() {
   }
 
   return (
-    <div className={`app ${selected ? 'has-panel' : ''}`}>
-      <header className="top">
-        <h1 className="wordmark" aria-label="dancrrr">
-          danc
-          {['r', 'r', 'r'].map((r, i) => (
-            <span key={i} style={{ color: focusColor(pal, i) }}>{r}</span>
-          ))}
-        </h1>
-
-        <nav className="tabs" aria-label="Focus styles">
-          <button className={!focusFilter ? 'tab on' : 'tab'} onClick={() => setFocusFilter(null)}>
-            Everything
-          </button>
-          {focus.map((f) => {
+    <div className={`app ${selected ? 'has-sheet' : ''}`}>
+      <header className="top-app-bar">
+        <div className="app-bar-row">
+          <span className="logo" aria-hidden>
+            <Icon>graph_3</Icon>
+          </span>
+          <h1 className="title-large grow">dancrrr</h1>
+          <span style={{ position: 'relative' }}>
+            <IconButton id="menu-anchor" aria-label="More options" onClick={() => setMenuOpen(!menuOpen)}>
+              <Icon>more_vert</Icon>
+            </IconButton>
+            <Menu anchor="menu-anchor" positioning="popover" open={menuOpen} onClosed={() => setMenuOpen(false)}>
+              <MenuItem onClick={exportMap}>
+                <Icon slot="start">download</Icon>
+                <div slot="headline">Save map to a file</div>
+              </MenuItem>
+              <MenuItem onClick={() => fileRef.current?.click()}>
+                <Icon slot="start">upload</Icon>
+                <div slot="headline">Load map from a file</div>
+              </MenuItem>
+              <Divider role="separator" />
+              <MenuItem onClick={() => window.confirm('Reset to the starter map? Your ratings will be lost.') && store.reset()}>
+                <Icon slot="start">restart_alt</Icon>
+                <div slot="headline">Reset to starter map</div>
+              </MenuItem>
+            </Menu>
+          </span>
+        </div>
+        <ChipSet className="filters" aria-label="Show one focus style">
+          {focus.map((f, i) => {
             const p = progress(f)
             return (
-              <button
+              <FilterChip
                 key={f.id}
-                className={focusFilter === f.id ? 'tab on' : 'tab'}
-                style={{ '--c': colorOf(f.id) } as CSSProperties}
-                onClick={() => {
+                className={`focus-chip f${(i % 5) + 1}`}
+                label={`${f.name}  ${p == null ? '–' : Math.round(p * 100) + '%'}`}
+                selected={focusFilter === f.id}
+                onClick={(e) => {
+                  e.preventDefault()
                   setFocusFilter(focusFilter === f.id ? null : f.id)
                   setSelectedId(null)
                 }}
-              >
-                <i className="dot" />
-                {f.name}
-                <span className="pct">{p == null ? '—' : `${Math.round(p * 100)}%`}</span>
-              </button>
+              />
             )
           })}
-        </nav>
-
-        <div className="menu-wrap">
-          <button className="round" onClick={() => setMenu(!menu)} aria-label="More" aria-expanded={menu}>
-            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden><circle cx="3" cy="8" r="1.4" fill="currentColor" /><circle cx="8" cy="8" r="1.4" fill="currentColor" /><circle cx="13" cy="8" r="1.4" fill="currentColor" /></svg>
-          </button>
-          {menu && (
-            <>
-              <div className="menu-scrim" onClick={() => setMenu(false)} />
-              <div className="menu" onClick={() => setMenu(false)}>
-                <button onClick={exportMap}>Save my map to a file</button>
-                <button onClick={() => fileRef.current?.click()}>Load a map from a file</button>
-                <hr />
-                <button className="danger" onClick={() => window.confirm('Reset to the starter map? Your ratings will be lost.') && store.reset()}>
-                  Reset to the starter map
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+        </ChipSet>
         <input
           ref={fileRef} type="file" accept="application/json" hidden
           onChange={async (e) => {
@@ -109,11 +105,9 @@ export default function App() {
 
       <main className="stage">
         <Graph map={map} selectedId={selectedId} focusFilter={focusFilter} onSelect={setSelectedId} />
-        {!selected && <p className="hint">Tap a style to open it</p>}
-        <button className="fab" onClick={() => setAdding(true)}>
-          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden><path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
-          Add style
-        </button>
+        <Fab className="fab" variant="primary" label="Add style" onClick={() => setAdding(true)}>
+          <Icon slot="icon">add</Icon>
+        </Fab>
       </main>
 
       {selected && (

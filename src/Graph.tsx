@@ -3,19 +3,17 @@ import ForceGraph2D, { type ForceGraphMethods, type NodeObject, type LinkObject 
 import { forceCollide } from 'd3-force-3d'
 import type { DanceMap, StyleNode } from './types'
 import { progress } from './store'
-import { focusColor, useFontsReady, usePalette, withAlpha } from './theme'
+import { focusColor, onFocusColor, useFontsReady, usePalette, withAlpha } from './theme'
 
 type GNode = { id: string }
 type GLink = { builds: string }
 type N = NodeObject<GNode>
 type L = LinkObject<GNode, GLink>
 
-const DISPLAY = '"Bricolage Grotesque", system-ui, sans-serif'
-const BODY = '"Instrument Sans", system-ui, sans-serif'
-const MONO = '"IBM Plex Mono", ui-monospace, monospace'
+const FONT = 'Roboto, system-ui, sans-serif'
 
-const R_FOCUS = 22
-const R_SUPPORT = 11
+const R_FOCUS = 24
+const R_SUPPORT = 12
 
 interface Props {
   map: DanceMap
@@ -77,7 +75,7 @@ export default function Graph({ map, selectedId, focusFilter, onSelect }: Props)
   const colorFor = (n: StyleNode) => {
     if (n.kind === 'focus') return colorOfFocus(n.id)
     const targets = map.links.filter((l) => l.from === n.id).map((l) => l.to)
-    return targets.length === 1 ? colorOfFocus(targets[0]) : pal.ink3
+    return targets.length === 1 ? colorOfFocus(targets[0]) : pal.outline
   }
 
   // The "lit" set: the selected style (or filtered focus style) and its direct neighbours.
@@ -136,9 +134,9 @@ export default function Graph({ map, selectedId, focusFilter, onSelect }: Props)
         linkCurvature={0.14}
         linkColor={(l) => {
           const c = colorOfFocus(idOf(l.target))
-          return linkLit(l) ? withAlpha(c, lit ? 0.85 : 0.42) : withAlpha(pal.ink3, 0.1)
+          return linkLit(l) ? withAlpha(c, lit ? 0.9 : 0.45) : withAlpha(pal.outline, 0.12)
         }}
-        linkWidth={(l) => (lit && linkLit(l) ? 2.4 : 1.4)}
+        linkWidth={(l) => (lit && linkLit(l) ? 2.5 : 1.5)}
         linkCanvasObjectMode={() => 'after'}
         linkCanvasObject={(l, ctx, scale) => {
           const showAll = scale > 1.5 && !lit
@@ -152,19 +150,19 @@ export default function Graph({ map, selectedId, focusFilter, onSelect }: Props)
           const cy = (s.y + t.y) / 2 - (dx / len) * len * 0.14
           const mx = 0.25 * s.x + 0.5 * cx + 0.25 * t.x
           const my = 0.25 * s.y + 0.5 * cy + 0.25 * t.y
-          const fs = 10.5 / scale
-          ctx.font = `500 ${fs}px ${MONO}`
-          const text = l.builds.toUpperCase()
+          const fs = 11 / scale
+          ctx.font = `500 ${fs}px ${FONT}`
+          const text = l.builds
           const tw = ctx.measureText(text).width
-          const px = 5 / scale, py = 3 / scale
-          ctx.fillStyle = pal.card
-          ctx.strokeStyle = withAlpha(colorOfFocus(t.id), 0.55)
+          const px = 8 / scale, h = 22 / scale
+          ctx.fillStyle = pal.container
+          ctx.strokeStyle = pal.outlineVariant
           ctx.lineWidth = 1 / scale
           ctx.beginPath()
-          ctx.roundRect(mx - tw / 2 - px, my - fs / 2 - py, tw + px * 2, fs + py * 2, 4 / scale)
+          ctx.roundRect(mx - tw / 2 - px, my - h / 2, tw + px * 2, h, 8 / scale)
           ctx.fill()
           ctx.stroke()
-          ctx.fillStyle = pal.ink2
+          ctx.fillStyle = pal.onSurfaceVariant
           ctx.textAlign = 'center'
           ctx.textBaseline = 'middle'
           ctx.fillText(text, mx, my + 0.5 / scale)
@@ -183,46 +181,47 @@ export default function Graph({ map, selectedId, focusFilter, onSelect }: Props)
           const r = focus ? R_FOCUS : R_SUPPORT
           const x = n.x!, y = n.y!
           const color = colorFor(node)
+          const fi = focusIds.indexOf(node.id)
           const p = progress(node)
           const selected = selectedId === node.id
-          ctx.globalAlpha = lit && !lit.has(node.id) ? 0.16 : 1
+          ctx.globalAlpha = lit && !lit.has(node.id) ? 0.2 : 1
 
+          // Selection: a soft state layer, like Material's pressed/selected state.
           if (selected) {
             ctx.beginPath()
             ctx.arc(x, y, r + 14, 0, Math.PI * 2)
-            ctx.fillStyle = withAlpha(color === pal.ink3 ? pal.ink : color, 0.14)
+            ctx.fillStyle = withAlpha(color, 0.16)
             ctx.fill()
           }
 
-          // Progress track and arc.
-          const ringR = r + (focus ? 7 : 5)
+          // Progress, drawn like a Material circular progress indicator.
+          const ringR = r + (focus ? 6 : 5)
           ctx.lineCap = 'round'
           ctx.beginPath()
           ctx.arc(x, y, ringR, 0, Math.PI * 2)
-          ctx.lineWidth = focus ? 3.5 : 2.5
-          ctx.strokeStyle = withAlpha(color === pal.ink3 ? pal.ink : color, 0.16)
+          ctx.lineWidth = focus ? 4 : 3
+          ctx.strokeStyle = withAlpha(color, 0.18)
           ctx.stroke()
           if (p != null && p > 0) {
             ctx.beginPath()
             ctx.arc(x, y, ringR, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2)
-            ctx.strokeStyle = focus ? color : pal.ink
+            ctx.strokeStyle = color
             ctx.stroke()
           }
           ctx.lineCap = 'butt'
 
-          // Body.
           ctx.beginPath()
           ctx.arc(x, y, r, 0, Math.PI * 2)
           if (focus) {
             ctx.fillStyle = color
             ctx.fill()
-            ctx.fillStyle = '#fff'
-            ctx.font = `600 ${11}px ${MONO}`
+            ctx.fillStyle = onFocusColor(pal, Math.max(fi, 0))
+            ctx.font = `500 13px ${FONT}`
             ctx.textAlign = 'center'
             ctx.textBaseline = 'middle'
-            ctx.fillText(p == null ? '—' : `${Math.round(p * 100)}`, x, y + 0.5)
+            ctx.fillText(p == null ? '–' : `${Math.round(p * 100)}%`, x, y + 0.5)
           } else {
-            ctx.fillStyle = pal.card
+            ctx.fillStyle = pal.containerHigh
             ctx.fill()
             ctx.lineWidth = 2
             ctx.strokeStyle = color
@@ -231,15 +230,15 @@ export default function Graph({ map, selectedId, focusFilter, onSelect }: Props)
 
           // Label.
           const fs = (focus ? 15 : 12.5) / Math.min(Math.max(scale, 0.6), 2.2)
-          ctx.font = focus ? `750 ${fs}px ${DISPLAY}` : `${selected ? 650 : 520} ${fs}px ${BODY}`
+          ctx.font = `${focus || selected ? 500 : 400} ${fs}px ${FONT}`
           ctx.textAlign = 'center'
           ctx.textBaseline = 'top'
-          const ly = y + ringR + 5
+          const ly = y + ringR + 6
           ctx.lineWidth = 4 / scale
-          ctx.strokeStyle = pal.paper
+          ctx.strokeStyle = pal.surface
           ctx.lineJoin = 'round'
           ctx.strokeText(node.name, x, ly)
-          ctx.fillStyle = focus || selected ? pal.ink : pal.ink2
+          ctx.fillStyle = focus || selected ? pal.onSurface : pal.onSurfaceVariant
           ctx.fillText(node.name, x, ly)
           ctx.globalAlpha = 1
         }}

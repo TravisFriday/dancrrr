@@ -1,26 +1,31 @@
 import { useEffect, useState } from 'react'
 
 export interface Palette {
-  paper: string
-  card: string
-  ink: string
-  ink2: string
-  ink3: string
-  line: string
+  surface: string
+  container: string
+  containerHigh: string
+  onSurface: string
+  onSurfaceVariant: string
+  outline: string
+  outlineVariant: string
   focus: string[]
+  onFocus: string[]
 }
 
 const read = (): Palette => {
   const cs = getComputedStyle(document.documentElement)
   const v = (n: string) => cs.getPropertyValue(n).trim()
+  const sys = (n: string) => v(`--md-sys-color-${n}`)
   return {
-    paper: v('--paper'),
-    card: v('--card'),
-    ink: v('--ink'),
-    ink2: v('--ink-2'),
-    ink3: v('--ink-3'),
-    line: v('--line'),
-    focus: [1, 2, 3, 4, 5].map((i) => v(`--f${i}`)),
+    surface: sys('surface'),
+    container: sys('surface-container-low'),
+    containerHigh: sys('surface-container-highest'),
+    onSurface: sys('on-surface'),
+    onSurfaceVariant: sys('on-surface-variant'),
+    outline: sys('outline'),
+    outlineVariant: sys('outline-variant'),
+    focus: [1, 2, 3, 4, 5].map((i) => v(`--focus-${i}`)),
+    onFocus: [1, 2, 3, 4, 5].map((i) => v(`--on-focus-${i}`)),
   }
 }
 
@@ -46,6 +51,7 @@ export function useFontsReady() {
 }
 
 export const focusColor = (p: Palette, index: number) => p.focus[index % p.focus.length]
+export const onFocusColor = (p: Palette, index: number) => p.onFocus[index % p.onFocus.length]
 
 export const withAlpha = (hex: string, a: number) => {
   const h = hex.replace('#', '')
