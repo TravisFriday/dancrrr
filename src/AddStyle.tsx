@@ -1,57 +1,66 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import type { DanceMap, Link } from './types'
+import { Dialog, FilledButton, Switch, TextButton, TextField } from './md'
 
 interface Props {
   map: DanceMap
+  colorOf: (focusId: string) => string
   onAdd: (name: string, about: string, links: Omit<Link, 'from'>[]) => void
   onClose: () => void
 }
 
-export default function AddStyle({ map, onAdd, onClose }: Props) {
+const val = (e: Event) => (e.target as HTMLInputElement).value
+
+export default function AddStyle({ map, colorOf, onAdd, onClose }: Props) {
   const focus = map.nodes.filter((n) => n.kind === 'focus')
   const [name, setName] = useState('')
   const [about, setAbout] = useState('')
-  const [targets, setTargets] = useState<Record<string, { on: boolean; builds: string; why: string }>>(
-    Object.fromEntries(focus.map((f) => [f.id, { on: false, builds: '', why: '' }])),
+  const [targets, setTargets] = useState<Record<string, { on: boolean; builds: string }>>(
+    Object.fromEntries(focus.map((f) => [f.id, { on: false, builds: '' }])),
   )
-  const chosen = Object.entries(targets).filter(([, t]) => t.on)
-  const valid = name.trim() && chosen.length > 0 && chosen.every(([, t]) => t.builds.trim())
+  const valid = !!name.trim()
+  const submit = () =>
+    valid &&
+    onAdd(
+      name.trim(),
+      about.trim(),
+      Object.entries(targets)
+        .filter(([, t]) => t.on)
+        .map(([to, t]) => ({ to, builds: t.builds.trim(), why: '' })),
+    )
 
   return (
-    <div className="modal-bg" onClick={onClose}>
-      <form
-        className="modal"
-        onClick={(e) => e.stopPropagation()}
-        onSubmit={(e) => {
-          e.preventDefault()
-          if (!valid) return
-          onAdd(name.trim(), about.trim(), chosen.map(([to, t]) => ({ to, builds: t.builds.trim(), why: t.why.trim() })))
-        }}
-      >
-        <h2>Add a supporting style</h2>
-        <label>Style<input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Krump" autoFocus /></label>
-        <label>Short description<input value={about} onChange={(e) => setAbout(e.target.value)} placeholder="optional" /></label>
-        <p className="muted">Which focus styles does it help, and with what?</p>
-        {focus.map((f) => {
-          const t = targets[f.id]
-          const set = (patch: Partial<typeof t>) => setTargets({ ...targets, [f.id]: { ...t, ...patch } })
-          return (
-            <div key={f.id} className="target">
-              <label className="check"><input type="checkbox" checked={t.on} onChange={(e) => set({ on: e.target.checked })} /> {f.name}</label>
-              {t.on && (
-                <>
-                  <input value={t.builds} onChange={(e) => set({ builds: e.target.value })} placeholder="Skill it builds (e.g. footwork)" />
-                  <input value={t.why} onChange={(e) => set({ why: e.target.value })} placeholder="Why it helps (optional)" />
-                </>
-              )}
-            </div>
-          )
-        })}
-        <div className="modal-actions">
-          <button type="button" onClick={onClose}>Cancel</button>
-          <button type="submit" disabled={!valid} className="primary">Add style</button>
+    <Dialog open onClosed={onClose}>
+      <div slot="headline">Add a style</div>
+      <form slot="content" id="add-style" method="dialog" className="dialog-form" onSubmit={(e) => (e.preventDefault(), submit())}>
+        <TextField label="Style" placeholder="Krump, Dancehall, Breaking…" value={name} onInput={(e) => setName(val(e))} />
+        <TextField label="Short description (optional)" value={about} onInput={(e) => setAbout(val(e))} />
+        <p className="title-small section-title">Connect it to</p>
+        <div className="connections">
+          {focus.map((f, fi) => {
+            const t = targets[f.id]
+            const set = (patch: Partial<typeof t>) => setTargets((prev) => ({ ...prev, [f.id]: { ...prev[f.id], ...patch } }))
+            return (
+              <div key={f.id} className={t.on ? 'connection on' : 'connection'} style={{ '--fc': colorOf(f.id), '--on-fc': `var(--on-focus-${(fi % 5) + 1})` } as CSSProperties}>
+                <label className="connection-row">
+                  <span className="avatar">{f.name.slice(0, 1)}</span>
+                  <span className="body-large grow">{f.name}</span>
+                  <Switch selected={t.on} onChange={(e) => set({ on: (e.target as HTMLElement & { selected: boolean }).selected })} aria-label={`Connect to ${f.name}`} />
+                </label>
+                {t.on && (
+                  <div className="connection-fields">
+                    <TextField label="What it builds" placeholder="e.g. footwork" value={t.builds} onInput={(e) => set({ builds: val(e) })} />
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       </form>
-    </div>
+      <div slot="actions">
+        <TextButton onClick={onClose}>Cancel</TextButton>
+        <FilledButton onClick={submit} disabled={!valid}>Add style</FilledButton>
+      </div>
+    </Dialog>
   )
 }
