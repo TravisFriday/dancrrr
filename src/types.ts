@@ -11,6 +11,8 @@ export interface StyleNode {
   id: string
   name: string
   kind: 'focus' | 'support'
+  /** Set when this style is one of the styles a focus style is made of (e.g. Pantsula in Amapiano). */
+  parent?: string
   about: string
   items: Item[]
 }

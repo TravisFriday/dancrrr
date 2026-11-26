@@ -22,8 +22,8 @@ export default function App() {
   const colorForNode = (id: string) => {
     const n = map.nodes.find((x) => x.id === id)
     if (!n || n.kind === 'focus') return colorOf(id)
-    const t = map.links.filter((l) => l.from === id)
-    return t.length === 1 ? colorOf(t[0].to) : pal.outline
+    if (n.parent && focus.some((f) => f.id === n.parent)) return colorOf(n.parent)
+    return pal.outline
   }
 
   useEffect(() => {
@@ -128,6 +128,7 @@ export default function App() {
           }}
           setConnected={store.setConnected}
           updateLink={store.updateLink}
+          setParent={store.setParent}
         />
       )}
 
@@ -136,8 +137,8 @@ export default function App() {
           map={map}
           colorOf={colorOf}
           onClose={() => setAdding(false)}
-          onAdd={(name, about, links) => {
-            const id = store.addStyle(name, about, links)
+          onAdd={(name, about, links, parent) => {
+            const id = store.addStyle(name, about, links, parent)
             setAdding(false)
             setSelectedId(id)
           }}

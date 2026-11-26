@@ -1,11 +1,11 @@
 import { useState, type CSSProperties } from 'react'
 import type { DanceMap, Link } from './types'
-import { Dialog, FilledButton, Switch, TextButton, TextField } from './md'
+import { ChipSet, Dialog, FilledButton, FilterChip, Switch, TextButton, TextField } from './md'
 
 interface Props {
   map: DanceMap
   colorOf: (focusId: string) => string
-  onAdd: (name: string, about: string, links: Omit<Link, 'from'>[]) => void
+  onAdd: (name: string, about: string, links: Omit<Link, 'from'>[], parent?: string) => void
   onClose: () => void
 }
 
@@ -18,7 +18,9 @@ export default function AddStyle({ map, colorOf, onAdd, onClose }: Props) {
   const [targets, setTargets] = useState<Record<string, { on: boolean; builds: string }>>(
     Object.fromEntries(focus.map((f) => [f.id, { on: false, builds: '' }])),
   )
-  const valid = !!name.trim()
+  const [mode, setMode] = useState<'helps' | 'part'>('helps')
+  const [parent, setParent] = useState<string | null>(null)
+  const valid = !!name.trim() && (mode === 'helps' || !!parent)
   const submit = () =>
     valid &&
     onAdd(
@@ -27,6 +29,7 @@ export default function AddStyle({ map, colorOf, onAdd, onClose }: Props) {
       Object.entries(targets)
         .filter(([, t]) => t.on)
         .map(([to, t]) => ({ to, builds: t.builds.trim(), why: '' })),
+      mode === 'part' ? parent ?? undefined : undefined,
     )
 
   return (
@@ -35,6 +38,27 @@ export default function AddStyle({ map, colorOf, onAdd, onClose }: Props) {
       <form slot="content" id="add-style" method="dialog" className="dialog-form" onSubmit={(e) => (e.preventDefault(), submit())}>
         <TextField label="Style" placeholder="Krump, Dancehall, Breaking…" value={name} onInput={(e) => setName(val(e))} />
         <TextField label="Short description (optional)" value={about} onInput={(e) => setAbout(val(e))} />
+        <ChipSet aria-label="How it relates">
+          <FilterChip label="Helps a focus style" selected={mode === 'helps'} onClick={(e) => (e.preventDefault(), setMode('helps'))} />
+          <FilterChip label="Part of a focus style" selected={mode === 'part'} onClick={(e) => (e.preventDefault(), setMode('part'))} />
+        </ChipSet>
+        {mode === 'part' ? (
+          <>
+            <p className="title-small section-title">Put it inside</p>
+            <ChipSet>
+              {focus.map((f, fi) => (
+                <FilterChip
+                  key={f.id}
+                  className={`focus-chip f${(fi % 5) + 1}`}
+                  label={f.name}
+                  selected={parent === f.id}
+                  onClick={(e) => (e.preventDefault(), setParent(f.id))}
+                />
+              ))}
+            </ChipSet>
+          </>
+        ) : (
+        <>
         <p className="title-small section-title">Connect it to</p>
         <div className="connections">
           {focus.map((f, fi) => {
@@ -56,6 +80,8 @@ export default function AddStyle({ map, colorOf, onAdd, onClose }: Props) {
             )
           })}
         </div>
+        </>
+        )}
       </form>
       <div slot="actions">
         <TextButton onClick={onClose}>Cancel</TextButton>

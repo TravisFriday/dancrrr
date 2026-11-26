@@ -17,12 +17,13 @@ interface Props {
   removeStyle: (id: string) => void
   setConnected: (from: string, to: string, on: boolean) => void
   updateLink: (from: string, to: string, patch: Partial<Pick<Link, 'builds' | 'why'>>) => void
+  setParent: (id: string, parent: string | null) => void
 }
 
 const val = (e: Event) => (e.target as HTMLInputElement).value
 
 export default function DetailPanel(props: Props) {
-  const { map, node, color, colorOf, onClose, onSelect, setLevel, addItem, removeItem, removeStyle, setConnected, updateLink } = props
+  const { map, node, color, colorOf, onClose, onSelect, setLevel, addItem, removeItem, removeStyle, setConnected, updateLink, setParent } = props
   const [draft, setDraft] = useState('')
   const [type, setType] = useState<Item['type']>('move')
   const focus = node.kind === 'focus'
@@ -30,6 +31,9 @@ export default function DetailPanel(props: Props) {
   const nameOf = (id: string) => map.nodes.find((n) => n.id === id)?.name ?? id
   const focusStyles = map.nodes.filter((n) => n.kind === 'focus')
   const feeders = map.links.filter((l) => l.to === node.id)
+  const parent = node.parent ? map.nodes.find((n) => n.id === node.parent && n.kind === 'focus') : undefined
+  const members = map.nodes.filter((n) => n.parent === node.id)
+  const focusIndex = (id: string) => (Math.max(focusStyles.findIndex((f) => f.id === id), 0) % 5) + 1
 
   const submit = () => {
     if (!draft.trim()) return
@@ -44,7 +48,16 @@ export default function DetailPanel(props: Props) {
         <div className="sheet-title">
           <span className="overline">
             <span className="swatch" />
-            {focus ? 'Focus style' : 'Supporting style'}
+            {focus ? 'Focus style' : parent ? (
+              <>
+                Part of{' '}
+                <button className="inline-link" onClick={() => onSelect(parent.id)}>
+                  {parent.name}
+                </button>
+              </>
+            ) : (
+              'Supporting style'
+            )}
           </span>
           <h2 className="headline-small">{node.name}</h2>
         </div>
@@ -61,6 +74,28 @@ export default function DetailPanel(props: Props) {
       </div>
 
       {node.about && <p className="body-large about">{node.about}</p>}
+
+      {focus && (
+        <section>
+          <h3 className="title-small section-title">Made of</h3>
+          {members.length === 0 ? (
+            <p className="body-medium muted pad">Open a supporting style and put it inside {node.name}, or add a new one.</p>
+          ) : (
+            <List>
+              {members.map((m) => (
+                <ListItem key={m.id} type="button" onClick={() => onSelect(m.id)}>
+                  <span slot="start" className="avatar" style={{ '--fc': color, '--on-fc': `var(--on-focus-${focusIndex(node.id)})` } as CSSProperties}>
+                    {m.name.slice(0, 1)}
+                  </span>
+                  <div slot="headline">{m.name}</div>
+                  {progress(m) != null && <div slot="supporting-text">{Math.round(progress(m)! * 100)}% there</div>}
+                  <Icon slot="end">chevron_right</Icon>
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </section>
+      )}
 
       {focus ? (
         <section>
@@ -81,6 +116,26 @@ export default function DetailPanel(props: Props) {
           )}
         </section>
       ) : (
+        <>
+        <section>
+          <h3 className="title-small section-title">Part of</h3>
+          <p className="body-medium muted pad">Styles a focus style is made of sit inside its bubble.</p>
+          <ChipSet className="pad part-of">
+            {focusStyles.map((f) => (
+              <FilterChip
+                key={f.id}
+                className={`focus-chip f${focusIndex(f.id)}`}
+                label={f.name}
+                selected={node.parent === f.id}
+                onClick={(e) => {
+                  e.preventDefault()
+                  setParent(node.id, node.parent === f.id ? null : f.id)
+                }}
+              />
+            ))}
+          </ChipSet>
+        </section>
+        {!parent && (
         <section>
           <h3 className="title-small section-title">Connected to</h3>
           <div className="connections">
@@ -108,6 +163,8 @@ export default function DetailPanel(props: Props) {
             })}
           </div>
         </section>
+        )}
+        </>
       )}
 
       <section>

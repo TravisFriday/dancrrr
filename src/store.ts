@@ -8,11 +8,12 @@ export const newId = () => Math.random().toString(36).slice(2, 10)
 
 function fromSeed(): DanceMap {
   return {
-    version: 1,
+    version: 2,
     nodes: seed.nodes.map((n) => ({
       id: n.id,
       name: n.name,
       kind: n.kind as StyleNode['kind'],
+      ...('parent' in n && n.parent ? { parent: n.parent } : {}),
       about: n.about,
       items: n.items.map((i) => ({ ...i, id: newId(), type: i.type as Item['type'] })),
     })),
@@ -25,12 +26,31 @@ function isMap(x: unknown): x is DanceMap {
   return !!m && Array.isArray(m.nodes) && Array.isArray(m.links)
 }
 
+/** Maps saved before version 2 had no "part of" styles: bring in Amapiano's roots. */
+function migrate(m: DanceMap): DanceMap {
+  if ((m.version ?? 1) >= 2) return m
+  const seeded = fromSeed()
+  let nodes = m.nodes
+  let links = m.links
+  if (nodes.some((n) => n.id === 'amapiano')) {
+    for (const id of ['pantsula', 'sbujwa', 'bhenga']) {
+      const fromSeedNode = seeded.nodes.find((n) => n.id === id)!
+      const existing = nodes.find((n) => n.id === id)
+      nodes = existing
+        ? nodes.map((n) => (n.id === id ? { ...n, parent: 'amapiano' } : n))
+        : [...nodes, fromSeedNode]
+      links = links.filter((l) => l.from !== id)
+    }
+  }
+  return { ...m, version: 2, nodes, links }
+}
+
 function load(): DanceMap {
   try {
     const raw = localStorage.getItem(KEY)
     if (raw) {
       const parsed = JSON.parse(raw)
-      if (isMap(parsed)) return parsed
+      if (isMap(parsed)) return migrate(parsed)
     }
   } catch {
     /* storage unavailable or corrupt: fall back to the seed */
@@ -63,15 +83,28 @@ export function useDanceMap() {
       updateNode(nodeId, (n) => ({ ...n, items: [...n.items, { id: newId(), name, type, level: 1 }] })),
     removeItem: (nodeId: string, itemId: string) =>
       updateNode(nodeId, (n) => ({ ...n, items: n.items.filter((i) => i.id !== itemId) })),
-    addStyle: (name: string, about: string, links: Omit<Link, 'from'>[]) => {
+    addStyle: (name: string, about: string, links: Omit<Link, 'from'>[], parent?: string) => {
       const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + newId().slice(0, 4)
       setMap((m) => ({
         ...m,
-        nodes: [...m.nodes, { id, name, kind: 'support', about, items: [] }],
-        links: [...m.links, ...links.map((l) => ({ ...l, from: id }))],
+        nodes: [...m.nodes, { id, name, kind: 'support', about, items: [], ...(parent ? { parent } : {}) }],
+        links: parent ? m.links : [...m.links, ...links.map((l) => ({ ...l, from: id }))],
       }))
       return id
     },
+    /** Put a style inside a focus style (it then has no outside connections), or take it back out. */
+    setParent: (id: string, parent: string | null) =>
+      setMap((m) => ({
+        ...m,
+        nodes: m.nodes.map((n) => {
+          if (n.id !== id) return n
+          const next = { ...n }
+          if (parent) next.parent = parent
+          else delete next.parent
+          return next
+        }),
+        links: parent ? m.links.filter((l) => l.from !== id) : m.links,
+      })),
     removeStyle: (id: string) =>
       setMap((m) => ({
         ...m,

@@ -125,6 +125,8 @@ button { font: inherit; color: inherit; }
   width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex: none;
   background: var(--fc); color: var(--on-fc, var(--md-sys-color-surface)); font: 500 16px var(--md-ref-typeface-plain);
 }
+.part-of { padding-top: 12px; }
+.inline-link { border: none; background: none; padding: 0; font: inherit; color: var(--md-sys-color-primary); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .avatar.neutral { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
 .connection-fields { display: grid; gap: 12px; padding: 4px 0 12px 52px; }
 .connection-fields md-outlined-text-field { width: 100%; }

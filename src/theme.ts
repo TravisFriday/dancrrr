@@ -10,6 +10,7 @@ export interface Palette {
   outlineVariant: string
   focus: string[]
   onFocus: string[]
+  onFocusContainer: string[]
 }
 
 const read = (): Palette => {
@@ -26,6 +27,7 @@ const read = (): Palette => {
     outlineVariant: sys('outline-variant'),
     focus: [1, 2, 3, 4, 5].map((i) => v(`--focus-${i}`)),
     onFocus: [1, 2, 3, 4, 5].map((i) => v(`--on-focus-${i}`)),
+    onFocusContainer: [1, 2, 3, 4, 5].map((i) => v(`--on-focus-${i}-container`)),
   }
 }
 
