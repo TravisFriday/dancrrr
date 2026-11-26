@@ -30,7 +30,7 @@
     { "id": "house", "name": "House", "kind": "support", "about": "Club dance known for fast footwork and jacking.", "items": [] },
     { "id": "popping", "name": "Popping", "kind": "support", "about": "Funk style built on muscle hits and isolations.", "items": [] },
     { "id": "pantsula", "name": "Pantsula", "kind": "support", "about": "South African street style with sharp, fast footwork.", "items": [] },
-    { "id": "soukous", "name": "Soukous / Congolese rumba", "kind": "support", "about": "The partner and social dancing Ndombolo comes from.", "items": [] },
+    { "id": "soukous", "name": "Soukous", "kind": "support", "about": "Congolese rumba and soukous, the social dancing Ndombolo comes from.", "items": [] },
     { "id": "hiphop-grooves", "name": "Hip-hop grooves", "kind": "support", "about": "Foundational bounces and rocks.", "items": [] },
     { "id": "afrobeats", "name": "Afrobeats dance", "kind": "support", "about": "Wider West African party vocabulary.", "items": [] }
   ],

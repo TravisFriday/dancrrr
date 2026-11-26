@@ -78,6 +78,19 @@ export function useDanceMap() {
         nodes: m.nodes.filter((n) => n.id !== id),
         links: m.links.filter((l) => l.from !== id && l.to !== id),
       })),
+    // Connect a supporting style to a focus style, or cut that connection.
+    setConnected: (from: string, to: string, on: boolean) =>
+      setMap((m) => {
+        const exists = m.links.some((l) => l.from === from && l.to === to)
+        if (on && !exists) return { ...m, links: [...m.links, { from, to, builds: '', why: '' }] }
+        if (!on && exists) return { ...m, links: m.links.filter((l) => !(l.from === from && l.to === to)) }
+        return m
+      }),
+    updateLink: (from: string, to: string, patch: Partial<Pick<Link, 'builds' | 'why'>>) =>
+      setMap((m) => ({
+        ...m,
+        links: m.links.map((l) => (l.from === from && l.to === to ? { ...l, ...patch } : l)),
+      })),
     replace: (next: unknown) => {
       if (!isMap(next)) return false
       setMap(next)
